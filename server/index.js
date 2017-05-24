@@ -27,6 +27,8 @@ const prettyHost = customHost || 'localhost';
 
 // Start your app.
 app.listen(port, host, (err) => {
+  console.error('app, host', app, host); // eslint-disable-line
+
   if (err) {
     return logger.error(err.message);
   }
