@@ -6,22 +6,28 @@
 
 import React from 'react';
 import Helmet from 'react-helmet';
-import { FormattedMessage } from 'react-intl';
 import { connect } from 'react-redux';
 import { createStructuredSelector } from 'reselect';
+import {
+  VictoryChart,
+  VictoryLine,
+  VictoryAxis,
+  VictoryBrushContainer,
+  VictoryZoomContainer,
+} from 'victory';
 
-import { makeSelectRepos, makeSelectLoading, makeSelectError } from 'containers/App/selectors';
-import H2 from 'components/H2';
-import ReposList from 'components/ReposList';
-import AtPrefix from './AtPrefix';
+import {
+  makeSelectSpeedTests,
+  makeSelectLoading,
+  makeSelectError,
+  makeSpeedTestData,
+} from 'containers/App/selectors';
 import CenteredSection from './CenteredSection';
-import Form from './Form';
-import Input from './Input';
 import Section from './Section';
-import messages from './messages';
 import { loadRepos } from '../App/actions';
 import { changeUsername } from './actions';
 import { makeSelectUsername } from './selectors';
+
 
 export class HomePage extends React.Component { // eslint-disable-line react/prefer-stateless-function
 
@@ -32,20 +38,37 @@ export class HomePage extends React.Component { // eslint-disable-line react/pre
    * when initial state username is not null, submit the form to load repos
    */
   componentDidMount() {
-    if (this.props.username && this.props.username.trim().length > 0) {
-      this.props.onSubmitForm();
-    }
+    this.props.onSubmitForm();  
   }
 
-  updateCounter = () => this.setState({counter: this.state.counter + 1})
+  updateCounter = () => this.setState({ counter: this.state.counter + 1 })
+
+  formatXAxis = (x) => {
+    const date = new Date(x);
+    return `${date.getHours()}`;
+  }
+
+   handleZoom(domain) {
+    this.setState({selectedDomain: domain});
+  }
+
+  handleBrush(domain) {
+    this.setState({zoomDomain: domain});
+  }
 
   render() {
-    const { loading, error, repos } = this.props;
-    const reposListProps = {
+    const {
       loading,
       error,
-      repos,
+      speedTests,
+      graphData,
+    } = this.props;
+    const speedTestsListProps = {
+      loading,
+      error,
+      speedTests,
     };
+    // console.error('graphData', graphData);
     
     return (
       <article>
@@ -55,35 +78,52 @@ export class HomePage extends React.Component { // eslint-disable-line react/pre
             { name: 'description', content: 'A React.js Boilerplate application homepage' },
           ]}
         />
+        <VictoryChart
+          width={600}
+          height={400}
+          scale={{ x: "time" }}
+          containerComponent={
+            <VictoryZoomContainer
+              dimension="x"
+              zoomDomain={this.state.zoomDomain}
+              onDomainChange={this.handleZoom.bind(this)}
+            />
+          }
+        >  
+          <VictoryLine
+            style={{
+              data: {stroke: 'tomato'}
+            }}
+            data={graphData}
+            x="time"
+            y="download"
+          />
+        </VictoryChart>
+        <VictoryChart
+          padding={{top: 0, left: 50, right: 50, bottom: 30}}
+          width={600} height={100} scale={{x: "time"}}
+          containerComponent={
+            <VictoryBrushContainer
+              dimension="x"
+              selectedDomain={this.state.selectedDomain}
+              onDomainChange={this.handleBrush.bind(this)}
+            />
+          }
+        >
+          <VictoryLine
+            style={{
+              data: {stroke: 'tomato'}
+            }}
+            data={graphData}
+            x="time"
+            y="download"
+          />
+        </VictoryChart>
         <div>
+          {speedTests && speedTests.tests && speedTests.tests.map(test => test.speeds.download)}
           <CenteredSection>
-            <H2>
-              <FormattedMessage {...messages.startProjectHeader} />
-            </H2>
-            <p>
-              <FormattedMessage {...messages.startProjectMessage} />
-            </p>
           </CenteredSection>
           <Section>
-            <H2>
-              <FormattedMessage {...messages.trymeHeader} />
-            </H2>
-            <Form onSubmit={this.props.onSubmitForm}>
-              <label htmlFor="username">
-                <FormattedMessage {...messages.trymeMessage} />
-                <AtPrefix>
-                  <FormattedMessage {...messages.trymeAtPrefix} />
-                </AtPrefix>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="mxstbr"
-                  value={this.props.username}
-                  onChange={this.props.onChangeUsername}
-                />
-              </label>
-            </Form>
-            <ReposList {...reposListProps} />
           </Section>
           <button onClick={this.updateCounter}>
             {this.state.counter}
@@ -100,13 +140,8 @@ HomePage.propTypes = {
     React.PropTypes.object,
     React.PropTypes.bool,
   ]),
-  repos: React.PropTypes.oneOfType([
-    React.PropTypes.array,
-    React.PropTypes.bool,
-  ]),
   onSubmitForm: React.PropTypes.func,
   username: React.PropTypes.string,
-  onChangeUsername: React.PropTypes.func,
 };
 
 export function mapDispatchToProps(dispatch) {
@@ -120,10 +155,11 @@ export function mapDispatchToProps(dispatch) {
 }
 
 const mapStateToProps = createStructuredSelector({
-  repos: makeSelectRepos(),
+  speedTests: makeSelectSpeedTests(),
   username: makeSelectUsername(),
   loading: makeSelectLoading(),
   error: makeSelectError(),
+  graphData: makeSpeedTestData(),
 });
 
 // Wrap the component to inject dispatch and state into it

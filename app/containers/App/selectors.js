@@ -21,10 +21,21 @@ const makeSelectError = () => createSelector(
   (globalState) => globalState.get('error')
 );
 
-const makeSelectRepos = () => createSelector(
+const makeSelectSpeedTests = () => createSelector(
   selectGlobal,
-  (globalState) => globalState.getIn(['userData', 'repositories'])
+  (globalState) => globalState.get('speedTests')
 );
+
+const makeSpeedTestData = () => createSelector(
+  makeSelectSpeedTests(),
+  (speedTests) => speedTests.map((test) => ({
+    time: new Date(test.time),
+    download: test.speeds.download,
+    upload: test.speeds.upload,
+  }))
+
+);
+
 
 const makeSelectLocationState = () => {
   let prevRoutingState;
@@ -47,6 +58,7 @@ export {
   makeSelectCurrentUser,
   makeSelectLoading,
   makeSelectError,
-  makeSelectRepos,
+  makeSpeedTestData,
+  makeSelectSpeedTests,
   makeSelectLocationState,
 };
